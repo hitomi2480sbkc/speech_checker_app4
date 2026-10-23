@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>音声文字起こし 検証ツール | Speech Transcription Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- PWA/Mobile Web App 対応 -->
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- トップヘッダー -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="logo-icon">🎧</div>
+          <div>
+            <h1 class="header-title">文字起こし検証</h1>
+            <div class="header-sub" id="headerGroupLabel">Group 1 (1〜100)</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="viewToggleBtn" class="icon-btn" title="表示切替 (カード / リスト)">
+            <span id="viewToggleIcon">📑</span>
+          </button>
+          <button id="exportModalOpenBtn" class="primary-pill-btn" title="エクスポート">
+            <span>保存/出力</span>
+            <span class="btn-badge" id="exportBadge">0</span>
+          </button>
+          <button id="menuModalOpenBtn" class="icon-btn" title="メニュー・設定">
+            <span>⚙️</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 進捗インジケーター -->
+      <div class="progress-section">
+        <div class="progress-info">
+          <span class="progress-label">全体の進捗: <strong id="progressPercent">0%</strong> (<span id="answeredCount">0</span> / <span id="totalCount">999</span>)</span>
+          <div class="progress-stats">
+            <span class="stat-tag ok"><span class="badge-dot ok"></span> ◯ <strong id="countOk">0</strong></span>
+            <span class="stat-tag ng"><span class="badge-dot ng"></span> × <strong id="countNg">0</strong></span>
+            <span class="stat-tag pending"><span class="badge-dot pending"></span> 未 <strong id="countPending">999</strong></span>
+          </div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill-ok" id="progressBarOk" style="width: 0%;"></div>
+          <div class="progress-bar-fill-ng" id="progressBarNg" style="width: 0%;"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- オーディオプレイヤー（常駐） -->
+    <section class="audio-panel" id="audioPanel">
+      <div class="audio-panel-header">
+        <div class="audio-file-info">
+          <span class="audio-icon">🎵</span>
+          <span class="audio-filename" id="currentAudioName">speech_gaze_001_100.mp3</span>
+          <span class="audio-source-badge" id="audioSourceBadge">相対パス</span>
+        </div>
+        <div class="audio-tools">
+          <button id="audioSourceSelectBtn" class="tool-btn" title="音声ソース変更 / ローカルファイル選択">📁 音声選択</button>
+          <button id="audioPanelToggleBtn" class="tool-btn icon-only" title="プレイヤー折りたたみ">▲</button>
+        </div>
+      </div>
+
+      <div class="audio-controls-body" id="audioControlsBody">
+        <audio id="mainAudio" preload="metadata"></audio>
+        
+        <div class="audio-time-row">
+          <span id="currentTimeLabel">0:00</span>
+          <input type="range" id="audioSeekBar" class="seek-bar" min="0" max="100" value="0" step="0.1">
+          <span id="durationTimeLabel">0:00</span>
+        </div>
+
+        <div class="audio-buttons-row">
+          <button id="btnSpeed" class="pill-btn speed-btn" title="再生速度">1.0x</button>
+          <button id="btnBack5" class="round-btn secondary" title="5秒戻る">↺ 5s</button>
+          <button id="btnPlayPause" class="round-btn primary play-btn" title="再生 / 一時停止">
+            <span id="playIcon">▶</span>
+          </button>
+          <button id="btnForward5" class="round-btn secondary" title="5秒進む">5s ↻</button>
+          <button id="btnSyncAudio" class="pill-btn" title="現在のIDの音声へジャンプ">📍 ID再生</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- メインコンテンツ領域 -->
+    <main class="main-content">
+
+      <!-- ================= 1. カードビュー (集中モード) ================= -->
+      <section id="cardView" class="view-section active">
+        <!-- グループ切り替えタブ -->
+        <div class="group-select-bar">
+          <label for="groupSelect" class="group-label">グループ:</label>
+          <select id="groupSelect" class="custom-select">
+            <option value="1">1 〜 100 (speech_gaze_001_100)</option>
+            <option value="101">101 〜 200 (speech_gaze_101_200)</option>
+            <option value="201">201 〜 300 (speech_gaze_201_300)</option>
+            <option value="301">301 〜 400 (speech_gaze_301_400)</option>
+            <option value="401">401 〜 500 (speech_gaze_401_500)</option>
+            <option value="501">501 〜 600 (speech_gaze_501_600)</option>
+            <option value="601">601 〜 700 (speech_gaze_601_700)</option>
+            <option value="701">701 〜 800 (speech_gaze_701_800)</option>
+            <option value="801">801 〜 900 (speech_gaze_801_900)</option>
+            <option value="901">901 〜 999 (speech_gaze_901_999)</option>
+          </select>
+          <button id="btnJumpUnanswered" class="pill-btn highlight" title="次の未回答へジャンプ">次の未回答へ ⏩</button>
+        </div>
+
+        <!-- 判定カード本体 -->
+        <div class="checker-card" id="checkerCard">
+          <div class="card-meta">
+            <div class="meta-left">
+              <span class="id-badge">ID: <strong id="cardId">#1</strong></span>
+              <span class="index-badge"><span id="currentIndexDisplay">1</span> / <span id="groupTotalDisplay">100</span></span>
+            </div>
+            <div class="meta-right">
+              <span class="time-badge" id="cardTimeBadge">⏱ 0.0s - 17.0s (17.0s)</span>
+              <span class="direction-badge" id="cardDirectionBadge" style="display: none;">👀 右</span>
+            </div>
+          </div>
+
+          <!-- 文字起こしテキスト -->
+          <div class="speech-box">
+            <div class="speech-box-label">文字起こしテキスト (Speech Text):</div>
+            <div class="speech-text" id="cardSpeechText">（読み込み中...）</div>
+          </div>
+
+          <!-- 元音声・CSV情報 -->
+          <div class="source-info" id="cardSourceInfo">
+            <span>📁 原本: <span id="cardSourceAudio">audio_20250802_081910.wav</span></span>
+          </div>
+
+          <!-- 判定ボタン -->
+          <div class="judgment-section">
+            <div class="judgment-label">判定してください:</div>
+            <div class="judgment-buttons">
+              <button id="btnJudgeOk" class="judge-btn judge-ok" data-status="ok">
+                <span class="judge-icon">◯</span>
+                <span class="judge-text">問題なし (正解)</span>
+                <span class="judge-key-hint">キー: 1 / O</span>
+              </button>
+              <button id="btnJudgeNg" class="judge-btn judge-ng" data-status="ng">
+                <span class="judge-icon">×</span>
+                <span class="judge-text">問題あり (誤り)</span>
+                <span class="judge-key-hint">キー: 2 / X</span>
+              </button>
+            </div>
+            <div class="judgment-sub-row">
+              <button id="btnJudgeClear" class="text-link-btn">判定をリセット</button>
+              <label class="auto-advance-toggle">
+                <input type="checkbox" id="autoAdvanceCheck" checked>
+                <span>◯判定時に自動で次へ進む</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 備考・修正テキスト欄 -->
+          <div class="notes-section">
+            <label for="cardNoteInput" class="notes-label">
+              <span>備考 / 正しいテキスト / 修正理由:</span>
+              <span class="optional-hint">（任意）</span>
+            </label>
+            <textarea id="cardNoteInput" class="notes-textarea" placeholder="誤字や聞き取れない箇所、正しいセリフなどを入力できます..."></textarea>
+            
+            <!-- 定型クイックタグ -->
+            <div class="quick-tags">
+              <span class="tag-label">定型タグ:</span>
+              <button type="button" class="quick-tag-btn" data-text="聞き取り不能">聞き取り不能</button>
+              <button type="button" class="quick-tag-btn" data-text="一部誤字脱字">誤字あり</button>
+              <button type="button" class="quick-tag-btn" data-text="ノイズ/咳">ノイズ</button>
+              <button type="button" class="quick-tag-btn" data-text="話者が異なる">話者違い</button>
+              <button type="button" class="quick-tag-btn" data-text="途中で途切れている">途切れ</button>
+              <button type="button" class="quick-tag-btn" data-text="相槌のみ">相槌のみ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ナビゲーションバー (カード下部) -->
+        <div class="card-nav-bar">
+          <button id="btnPrevCard" class="nav-btn prev">◀ 前へ</button>
+          <div class="nav-status-pill" id="currentCardStatusPill">未回答</div>
+          <button id="btnNextCard" class="nav-btn next">次へ ▶</button>
+        </div>
+      </section>
+
+      <!-- ================= 2. リストビュー (一覧モード) ================= -->
+      <section id="listView" class="view-section">
+        <div class="list-controls-bar">
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all">すべて (<span id="listFilterAllCount">999</span>)</button>
+            <button class="filter-pill" data-filter="unanswered">未回答 (<span id="listFilterPendingCount">0</span>)</button>
+            <button class="filter-pill" data-filter="ok">◯ OK (<span id="listFilterOkCount">0</span>)</button>
+            <button class="filter-pill" data-filter="ng">× NG (<span id="listFilterNgCount">0</span>)</button>
+            <button class="filter-pill" data-filter="note">備考あり (<span id="listFilterNoteCount">0</span>)</button>
+          </div>
+          <div class="search-box">
+            <input type="text" id="listSearchInput" placeholder="ID・テキスト・備考で検索...">
+          </div>
+        </div>
+
+        <div class="list-container" id="listContainer">
+          <!-- JSで動的に一覧行をレンダリング -->
+        </div>
+      </section>
+    </main>
+
+    <!-- モバイル固定ボトムアクションバー（片手操作用） -->
+    <div class="mobile-action-bar" id="mobileActionBar">
+      <button id="mobileBtnPrev" class="mobile-action-btn secondary" title="前へ">◀</button>
+      <button id="mobileBtnOk" class="mobile-action-btn ok" title="◯ 問題なし">
+        <span class="m-icon">◯</span>
+        <span class="m-text">問題なし</span>
+      </button>
+      <button id="mobileBtnNg" class="mobile-action-btn ng" title="× 問題あり">
+        <span class="m-icon">×</span>
+        <span class="m-text">問題あり</span>
+      </button>
+      <button id="mobileBtnNext" class="mobile-action-btn secondary" title="次へ">▶</button>
+    </div>
+
+    <!-- ================= モーダル: エクスポート / 保存 ================= -->
+    <div class="modal-overlay" id="exportModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">💾 回答データのエクスポート / 保存</h2>
+          <button class="modal-close-btn" id="exportModalCloseBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            現在の回答データはスマートフォンの <code>localStorage</code> にリアルタイム保存されています。<br>
+            以下のボタンからCSVやJSON形式でダウンロード・共有できます。
+          </p>
+
+          <div class="export-stat-summary">
+            <div>回答状況: <strong id="modalAnsweredCount">0</strong> / 999 件 (<span id="modalAnsweredRate">0%</span>)</div>
+            <div class="stat-mini-row">
+              <span class="stat-tag ok">◯: <span id="modalCountOk">0</span></span>
+              <span class="stat-tag ng">×: <span id="modalCountNg">0</span></span>
+              <span class="stat-tag pending">未: <span id="modalCountPending">0</span></span>
+            </div>
+          </div>
+
+          <div class="export-options-grid">
+            <!-- CSVダウンロード -->
+            <div class="export-card primary">
+              <div class="export-card-title">
+                <span class="export-icon">📄</span>
+                <strong>CSVファイルで出力 (推奨)</strong>
+              </div>
+              <p class="export-card-desc">Excelで開いても文字化けしないUTF-8 BOM付きCSVです。PCで開いてそのまま使えます。</p>
+              <button id="btnExportCsv" class="export-action-btn primary">📥 CSVをダウンロード</button>
+            </div>
+
+            <!-- JSONダウンロード -->
+            <div class="export-card">
+              <div class="export-card-title">
+                <span class="export-icon">📦</span>
+                <strong>JSONファイルで出力</strong>
+              </div>
+              <p class="export-card-desc">バックアップやPCのスクリプトで完全に復元・マージするための標準データです。</p>
+              <button id="btnExportJson" class="export-action-btn">📥 JSONをダウンロード</button>
+            </div>
+
+            <!-- スマホ共有 / クリップボード -->
+            <div class="export-card">
+              <div class="export-card-title">
+                <span class="export-icon">📲</span>
+                <strong>スマホで共有 / コピー</strong>
+              </div>
+              <p class="export-card-desc">AirDrop、LINE、メール、メモ帳など、お好みのアプリにワンタップで送信・コピーします。</p>
+              <div class="share-btn-group">
+                <button id="btnShareData" class="export-action-btn">📤 アプリで共有 (Share)</button>
+                <button id="btnCopyData" class="export-action-btn">📋 クリップボードにコピー</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- インポート欄 -->
+          <div class="import-section">
+            <h3 class="import-title">🔄 過去の回答データを読み込む (インポート)</h3>
+            <p class="import-desc">以前にエクスポートしたJSONファイルまたはCSVファイルを選択すると、回答を復元できます。</p>
+            <input type="file" id="importFileInput" accept=".json,.csv" style="display: none;">
+            <button id="btnTriggerImport" class="pill-btn">📂 ファイルを選択してインポート</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= モーダル: 音声ファイル選択 ================= -->
+    <div class="modal-overlay" id="audioSourceModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">🎵 音声ファイルの設定</h2>
+          <button class="modal-close-btn" id="audioSourceModalCloseBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            GitHub Pages上に音声ファイルを配置している場合は自動再生されます。<br>
+            スマホの通信量を節約したい場合や端末ローカルの音声を直接再生したい場合は以下から選択できます。
+          </p>
+
+          <div class="audio-source-choice">
+            <h4>方法 1: 相対パス (GitHub Pages 同梱)</h4>
+            <p><code>./speech_gaze_audios/speech_gaze_XXX_YYY.mp3</code> を自動読み込みします。（デフォルト）</p>
+            <button id="btnSetAudioDefault" class="pill-btn">標準設定（相対パス）に戻す</button>
+          </div>
+
+          <div class="audio-source-choice">
+            <h4>方法 2: スマホ端末内のMP3ファイルを選択</h4>
+            <p>スマホやPC内にダウンロードした <code>speech_gaze_XXX_YYY.mp3</code> を直接ブラウザに読み込ませます（通信量ゼロ）。</p>
+            <input type="file" id="localAudioFileInput" accept="audio/*">
+          </div>
+
+          <div class="audio-source-choice">
+            <h4>方法 3: 外部ストレージのBase URL</h4>
+            <p>Google Cloud Storage、S3、GitHub Releaseなどに音声を置いている場合:</p>
+            <div class="input-with-button">
+              <input type="text" id="audioBaseUrlInput" placeholder="例: https://example.com/audios/">
+              <button id="btnSaveAudioBaseUrl" class="pill-btn">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= モーダル: メニュー・設定・ヘルプ ================= -->
+    <div class="modal-overlay" id="menuModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 class="modal-title">⚙️ 設定・ヘルプ</h2>
+          <button class="modal-close-btn" id="menuModalCloseBtn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <h3>操作・表示設定</h3>
+            <label class="setting-item">
+              <span>◯判定時に自動で次の未回答へ進む</span>
+              <input type="checkbox" id="menuAutoAdvanceCheck" checked>
+            </label>
+            <label class="setting-item">
+              <span>タップ時の触覚フィードバック (振動)</span>
+              <input type="checkbox" id="menuVibrateCheck" checked>
+            </label>
+            <label class="setting-item">
+              <span>PC用ショートカットキー (1:◯, 2:×, ←/→:移動)</span>
+              <input type="checkbox" id="menuShortcutsCheck" checked>
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <h3>使い方</h3>
+            <ol class="help-list">
+              <li>上部のオーディオプレイヤーで音声を再生します（または別アプリで再生）。</li>
+              <li>文字起こしテキストを確認し、合っていれば <strong>「◯ 問題なし」</strong>、誤りがあれば <strong>「× 問題あり」</strong> をタップします。</li>
+              <li>「×」の場合や気になった箇所は「備考」欄に正しい言葉やメモを入力できます。</li>
+              <li>作業が終わったら「保存/出力」ボタンからCSVまたはJSONをダウンロードしてください。</li>
+              <li>PC上で付属の <code>【回答マージ実行】.bat</code> を実行すると、元のCSVとマージして最終結果ファイルが生成されます。</li>
+            </ol>
+          </div>
+
+          <div class="settings-group danger-zone">
+            <h3>データのリセット</h3>
+            <p>※保存されている回答データをすべて消去して初期状態に戻します。</p>
+            <button id="btnResetAllData" class="danger-btn">⚠️ すべての回答を初期化</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="toast"></div>
+
+  </div>
+
+  <!-- データ読み込み -->
+  <script src="data.js"></script>
+  <!-- アプリスクリプト -->
+  <script src="app.js"></script>
+</body>
+</html>
